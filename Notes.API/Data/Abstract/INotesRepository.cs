@@ -9,6 +9,6 @@ namespace Notes.Data.Abstract
         Task<IEnumerable<Note>> GetHistoryById(int id);
         int GetHighestOriginalNoteId();
 
-        Note GetLatestById(int id);
+        Task<Note> GetLatestById(int id);
     }
 }

@@ -14,6 +14,11 @@ namespace Notes.Data
         {
             var originalNote = await GetById<Note>(id);
 
+            if(originalNote == null)
+            {
+                return null;
+            }
+
             return _context.Set<Note>().Where(note => note.OriginalNoteId == originalNote.OriginalNoteId);
         }
 
@@ -29,12 +34,24 @@ namespace Notes.Data
             }
         }
 
-        public Note GetLatestById(int id)
+        public async Task<Note> GetLatestById(int id)
         {
-            var maxVersion = _context.Set<Note>().Where(note => note.Id == id).Max(note => note.Version);
-            
-            return _context.Set<Note>().FirstOrDefault(note => note.Id == id && 
-                                                               note.Version == maxVersion && 
+            var note = await _context.Set<Note>().FindAsync(id);
+
+            if (note == null)
+            {
+                return null;
+            }
+
+            var notes = _context.Set<Note>().Where(n => n.OriginalNoteId == note.OriginalNoteId).ToList();
+            var maxVersion = 1;
+
+            if(notes.Count() > 1)
+            {
+                maxVersion = notes.Max(note => note.Version);
+            }
+
+            return _context.Set<Note>().FirstOrDefault(note => note.Version == maxVersion && 
                                                                note.Deleted == false);
         }
     }

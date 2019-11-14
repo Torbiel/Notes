@@ -5,6 +5,7 @@ using Notes.Dtos;
 using Notes.Models;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Notes.Controllers
@@ -15,6 +16,7 @@ namespace Notes.Controllers
     {
         private readonly INotesRepository _repo;
         private readonly IMapper _mapper;
+        private string nonexistentNoteMessage = "This note doesn't exist.";
 
         public NotesController(INotesRepository repo, IMapper mapper)
         {
@@ -26,25 +28,36 @@ namespace Notes.Controllers
         public IActionResult Add(NoteForAddingDto noteDto)
         {
             var noteToAdd = _mapper.Map<Note>(noteDto);
-            noteToAdd.OriginalNoteId = _repo.GetHighestOriginalNoteId() + 1;
             _repo.Add(noteToAdd);
 
             return Ok();
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetLatestById(int id)
+        public async Task<IActionResult> GetLatestById(int id)
         {
-            var note = _repo.GetLatestById(id);
+            var note = await _repo.GetLatestById(id);
+            
+            if(note == null)
+            {
+                return BadRequest(nonexistentNoteMessage);
+            }
+
             var noteToReturn = _mapper.Map<NoteForGettingDto>(note);
 
             return Ok(noteToReturn);
         }
 
-        [HttpGet("/history/{id}")]
+        [HttpGet("history/{id}")]
         public async Task<IActionResult> GetHistoryById(int id)
         {
             var notes = await _repo.GetHistoryById(id);
+
+            if (notes == null)
+            {
+                return BadRequest(nonexistentNoteMessage);
+            }
+
             var notesToRetun = _mapper.Map<IEnumerable<Note>>(notes);
 
             return Ok(notesToRetun);
@@ -54,11 +67,26 @@ namespace Notes.Controllers
         public async Task<IActionResult> Update(int id, NoteForUpdatingDto noteDto)
         {
             var noteToUpdate = await _repo.GetById<Note>(id);
+
+            if(noteToUpdate == null || noteToUpdate.Deleted == true)
+            {
+                return BadRequest(nonexistentNoteMessage);
+            }
+
+            // If this is the first time updating a note, we fill its OriginalNoteId with its own Id.
+            // Doing this when adding would require to make another call to db to retrieve it and another to save it again.
+            if(noteToUpdate.OriginalNoteId == 0)
+            {
+                noteToUpdate.OriginalNoteId = noteToUpdate.Id;
+            }
+
             noteToUpdate.Modified = DateTime.Now;
             _repo.Update(noteToUpdate);
 
             var noteToAdd = _mapper.Map<Note>(noteDto);
-            noteToAdd.Version = _repo.GetLatestById(id).Version + 1;
+            var latestVersion = await _repo.GetLatestById(id);
+            noteToAdd.Version = latestVersion.Version + 1;
+            noteToAdd.OriginalNoteId = noteToUpdate.OriginalNoteId;
             _repo.Add(noteToAdd);
 
             return Ok();
@@ -69,9 +97,9 @@ namespace Notes.Controllers
         {
             var noteToDelete = await _repo.GetById<Note>(id);
 
-            if(noteToDelete.Deleted == true)
+            if(noteToDelete == null || noteToDelete.Deleted == true)
             {
-                return BadRequest("This note doesn't exist.");
+                return BadRequest(nonexistentNoteMessage);
             }
 
             noteToDelete.Deleted = true;

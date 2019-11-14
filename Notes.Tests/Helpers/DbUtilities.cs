@@ -5,7 +5,7 @@ using Notes.Models;
 
 namespace Notes.Tests.Helpers
 {
-    public class Utilities
+    public class DbUtilities
     {
         public static void InitializeDbForTests(NotesDbContext db)
         {
