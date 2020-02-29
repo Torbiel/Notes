@@ -1,5 +1,5 @@
 # Notes
- Webservice for PolSource recrutment assignment.
+ Webservice for PolSource recruitment assignment.
 
 The project was made with Visual Studio 2019 and it is required for running it, although older version (like 2017) will probably suffice. The database is SQL Server Express, so that will be required as well. For visualization of the database, MS SQL Management Studio was used.
 
